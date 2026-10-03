@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DemandPulse AI - Retail Demand Forecasting &amp; Inventory Recommendations</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="container">
+
+    <!-- Header -->
+    <header class="header">
+      <div>
+        <h1>DemandPulse <span class="accent">AI</span></h1>
+        <p class="subtitle">Retail Demand Forecasting &amp; Inventory Recommendations</p>
+        <p class="tagline">Forecast future product demand and make data-driven inventory decisions.</p>
+      </div>
+      <div class="header-right">
+        <span class="badge">ML: <span id="model-name">-</span></span>
+        <span class="badge subtle">Data as of <span id="as-of-date">-</span></span>
+      </div>
+    </header>
+
+    <!-- Controls -->
+    <section class="controls card">
+      <div class="control">
+        <label for="store">Store</label>
+        <select id="store"></select>
+      </div>
+      <div class="control">
+        <label for="product">Product</label>
+        <select id="product"></select>
+      </div>
+      <div class="control">
+        <label for="category">Category</label>
+        <input id="category" type="text" readonly placeholder="-">
+      </div>
+      <div class="control">
+        <label for="horizon">Forecast Horizon</label>
+        <select id="horizon">
+          <option value="7" selected>7 Days</option>
+          <option value="14">14 Days</option>
+        </select>
+      </div>
+      <button id="generate" class="btn">Generate Forecast</button>
+    </section>
+
+    <div id="error" class="error hidden"></div>
+
+    <!-- KPIs -->
+    <section class="kpis">
+      <div class="kpi card">
+        <span class="kpi-label">Current Inventory</span>
+        <span class="kpi-value" id="kpi-inventory">-</span>
+        <span class="kpi-sub">units in stock</span>
+      </div>
+      <div class="kpi card">
+        <span class="kpi-label"><span id="kpi-horizon-label">7-Day</span> Forecast</span>
+        <span class="kpi-value accent" id="kpi-forecast">-</span>
+        <span class="kpi-sub">units expected demand</span>
+      </div>
+      <div class="kpi card">
+        <span class="kpi-label">Stockout Risk</span>
+        <span class="kpi-value" id="kpi-risk">-</span>
+        <span class="kpi-sub" id="kpi-risk-detail">coverage based</span>
+      </div>
+      <div class="kpi card">
+        <span class="kpi-label">Recommended Reorder</span>
+        <span class="kpi-value green" id="kpi-reorder">-</span>
+        <span class="kpi-sub">units to replenish</span>
+      </div>
+    </section>
+
+    <!-- Forecast chart + inventory status -->
+    <section class="row-2">
+      <div class="card chart-card">
+        <h2>Demand Forecast</h2>
+        <div class="chart-wrap forecast"><canvas id="forecast-chart"></canvas></div>
+      </div>
+      <div class="card">
+        <h2>Inventory Status</h2>
+        <div class="bar-block">
+          <div class="bar-head"><span>Current Stock</span><span id="inv-current-txt">-</span></div>
+          <div class="bar"><div class="bar-fill blue" id="inv-current-bar"></div></div>
+        </div>
+        <div class="bar-block">
+          <div class="bar-head"><span>Expected Demand</span><span id="inv-demand-txt">-</span></div>
+          <div class="bar"><div class="bar-fill orange" id="inv-demand-bar"></div></div>
+        </div>
+        <div class="bar-block">
+          <div class="bar-head"><span>Stockout Risk</span><span id="inv-risk-txt">-</span></div>
+          <div class="risk-pill" id="inv-risk-pill">-</div>
+        </div>
+        <p class="footnote">Risk from coverage ratio: inventory / (forecast demand + safety stock).</p>
+      </div>
+    </section>
+
+    <!-- Recommendation + model performance -->
+    <section class="row-2">
+      <div class="card">
+        <h2>Inventory Recommendation</h2>
+        <div class="rec-row">
+          <div class="rec-main">
+            <span class="rec-label">Recommended Reorder</span>
+            <span class="rec-value green" id="rec-qty">-</span>
+            <span class="rec-unit">units</span>
+          </div>
+          <div class="rec-details">
+            <div><span>Lead Time (3 days) Demand</span><b id="rec-ltd">-</b></div>
+            <div><span>Safety Stock</span><b id="rec-safety">-</b></div>
+            <div><span>Expected Inventory Gap</span><b id="rec-gap">-</b></div>
+          </div>
+        </div>
+        <p class="reason"><b>Reason:</b> <span id="rec-reason">-</span></p>
+        <p class="footnote">Decision-support estimate - not a guaranteed optimal order quantity.</p>
+      </div>
+      <div class="card">
+        <h2>Model Performance <span class="h-sub">(chronological test period)</span></h2>
+        <div class="metrics-row">
+          <div class="metric"><span class="metric-label">MAE</span><span class="metric-value" id="met-mae">-</span></div>
+          <div class="metric"><span class="metric-label">RMSE</span><span class="metric-value" id="met-rmse">-</span></div>
+          <div class="metric"><span class="metric-label">WAPE</span><span class="metric-value" id="met-wape">-</span></div>
+        </div>
+        <table class="compare" id="compare-table">
+          <thead><tr><th>Model</th><th>MAE</th><th>RMSE</th><th>WAPE</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Feature importance + seasonality -->
+    <section class="row-2">
+      <div class="card">
+        <h2>Feature Importance <span class="h-sub">(permutation, validation)</span></h2>
+        <div class="chart-wrap sm"><canvas id="importance-chart"></canvas></div>
+      </div>
+      <div class="card">
+        <h2>Seasonal Pattern <span class="h-sub">(avg demand by weekday)</span></h2>
+        <div class="chart-wrap sm"><canvas id="season-chart"></canvas></div>
+      </div>
+    </section>
+
+    <!-- Insight -->
+    <section class="card insight">
+      <h2>Business Insight</h2>
+      <p id="insight-text">-</p>
+    </section>
+
+    <footer class="footer">
+      DemandPulse AI &middot; IBM BOB Internship Project &middot; Forecasts are ML estimates; recommendations are decision-support only.
+    </footer>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/chart.umd.min.js') }}"></script>
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

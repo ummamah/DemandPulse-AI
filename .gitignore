@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Logs & temp artifacts
+*.log
+_*.png
+_*.py
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS / IDE
+Thumbs.db
+.DS_Store
+.vscode/
+.idea/
